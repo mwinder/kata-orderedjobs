@@ -6,25 +6,6 @@ using System.Text.RegularExpressions;
 
 namespace OrderedJobs
 {
-    public class JobTests
-    {
-        public void ParseJobNoDependency()
-        {
-            var job = Job.Parse("a =>");
-
-            job.Name.ShouldBe("a");
-            job.HasDependency().ShouldBe(false);
-        }
-
-        public void ParseJobWithDependency()
-        {
-            var job = Job.Parse("a => b");
-
-            job.Name.ShouldBe("a");
-            job.HasDependency().ShouldBe(true);
-        }
-    }
-
     public class Job
     {
         public static Job Parse(string job)
@@ -45,6 +26,7 @@ namespace OrderedJobs
         }
 
         public string Name { get; private set; }
+
         public string Dependency { get; private set; }
 
         public bool HasDependency()
@@ -74,9 +56,28 @@ namespace OrderedJobs
         public class CircularDependency : Exception { }
     }
 
-    public class OrderedJobsTests
+    public class JobTests
     {
-        private static string Sort(string jobs)
+        public void ParseJobNoDependency()
+        {
+            var job = Job.Parse("a =>");
+
+            job.Name.ShouldBe("a");
+            job.HasDependency().ShouldBe(false);
+        }
+
+        public void ParseJobWithDependency()
+        {
+            var job = Job.Parse("a => b");
+
+            job.Name.ShouldBe("a");
+            job.HasDependency().ShouldBe(true);
+        }
+    }
+
+    public class OrderedJobs
+    {
+        public static string Sort(string jobs)
         {
             var sortedJobs = Sort(Parse(jobs));
 
@@ -101,33 +102,31 @@ namespace OrderedJobs
                 yield return job;
             }
         }
+    }
 
-
-
-
-
-
+    public class OrderedJobsTests
+    {
         public void EmptyJobList()
         {
-            Sort("")
+            OrderedJobs.Sort("")
                 .ShouldBe("");
         }
 
         public void SingleJobA()
         {
-            Sort("a =>")
+            OrderedJobs.Sort("a =>")
                 .ShouldBe("a");
         }
 
         public void SingleJobB()
         {
-            Sort("b =>")
+            OrderedJobs.Sort("b =>")
                 .ShouldBe("b");
         }
 
         public void MultipleJobsWithNoDependencies()
         {
-            Sort(
+            OrderedJobs.Sort(
 @"a =>
 b =>
 c =>")
@@ -136,7 +135,7 @@ c =>")
 
         public void MultipleJobsWithOneDependency()
         {
-            Sort(
+            OrderedJobs.Sort(
 @"a =>
 b => c
 c =>")
@@ -145,7 +144,7 @@ c =>")
 
         public void MultipleJobsWithTwoDependencies()
         {
-            Sort(
+            OrderedJobs.Sort(
 @"a => b
 b => c
 c =>")
@@ -154,7 +153,7 @@ c =>")
 
         public void MultipleJobsWithMultipleDependencies()
         {
-            Sort(
+            OrderedJobs.Sort(
 @"a =>
 b => c
 c => f
@@ -167,7 +166,7 @@ f =>")
         public void PreventSelfReferencingDependency()
         {
             Should.Throw<Job.CircularDependency>(() =>
-                Sort(
+                OrderedJobs.Sort(
 @"a =>
 b =>
 c => c"));
@@ -176,7 +175,7 @@ c => c"));
         public void PreventCircularDependencies()
         {
             Should.Throw<Job.CircularDependency>(() =>
-                Sort(
+                OrderedJobs.Sort(
 @"a =>
 b => c
 c => f
