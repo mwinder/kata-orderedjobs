@@ -52,10 +52,26 @@ namespace OrderedJobs
             return Dependency != null;
         }
 
+        public IEnumerable<Job> GetDependenciesWithin(List<Job> list)
+        {
+            var dependencies = new Stack<Job>();
+            var current = this;
+            dependencies.Push(current);
+            while (current.HasDependency())
+            {
+                current = list.First(j => j.Name == current.Dependency);
+                if (current == this) throw new CircularDependency();
+                dependencies.Push(current);
+            }
+            return dependencies;
+        }
+
         public override string ToString()
         {
             return Name + " => " + Dependency;
         }
+
+        public class CircularDependency : Exception { }
     }
 
     public class OrderedJobsTests
@@ -77,22 +93,10 @@ namespace OrderedJobs
         {
             var list = jobs.ToList();
             var processed = new HashSet<Job>();
-            foreach (var job in list.Where(job => !processed.Contains(job)))
+            foreach (var job in list
+                .SelectMany(job => job.GetDependenciesWithin(list))
+                .Where(job => !processed.Contains(job)))
             {
-                var current = job;
-                var dependencies = new Stack<Job>();
-                while (current.HasDependency())
-                {
-                    current = list.First(j => j.Name == current.Dependency);
-                    if (current == job) throw new CircularDependency();
-                    dependencies.Push(current);
-                }
-
-                foreach (var dependency in dependencies.Where(dependency => !processed.Contains(dependency)))
-                {
-                    processed.Add(dependency);
-                    yield return dependency;
-                }
                 processed.Add(job);
                 yield return job;
             }
@@ -162,7 +166,7 @@ f =>")
 
         public void PreventSelfReferencingDependency()
         {
-            Should.Throw<CircularDependency>(() =>
+            Should.Throw<Job.CircularDependency>(() =>
                 Sort(
 @"a =>
 b =>
@@ -171,7 +175,7 @@ c => c"));
 
         public void PreventCircularDependencies()
         {
-            Should.Throw<CircularDependency>(() =>
+            Should.Throw<Job.CircularDependency>(() =>
                 Sort(
 @"a =>
 b => c
@@ -180,9 +184,5 @@ d => a
 e =>
 f => b"));
         }
-    }
-
-    public class CircularDependency : Exception
-    {
     }
 }
